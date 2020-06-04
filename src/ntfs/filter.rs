@@ -185,18 +185,21 @@ pub fn filter(model: Model, filter: &Filter) -> Result<Model> {
         filter.action,
     );
 
-    updated_stop_time_attributes(
-        &collections.vehicle_journeys,
-        &mut collections.stop_time_ids,
-    );
-    updated_stop_time_attributes(
-        &collections.vehicle_journeys,
-        &mut collections.stop_time_headsigns,
-    );
-    updated_stop_time_attributes(
-        &collections.vehicle_journeys,
-        &mut collections.stop_time_comments,
-    );
+    #[cfg(not(feature = "stop_time"))]
+    {
+        updated_stop_time_attributes(
+            &collections.vehicle_journeys,
+            &mut collections.stop_time_ids,
+        );
+        updated_stop_time_attributes(
+            &collections.vehicle_journeys,
+            &mut collections.stop_time_headsigns,
+        );
+        updated_stop_time_attributes(
+            &collections.vehicle_journeys,
+            &mut collections.stop_time_comments,
+        );
+    }
 
     if collections.vehicle_journeys.is_empty() {
         bail!("the data does not contain vehicle journeys anymore.")

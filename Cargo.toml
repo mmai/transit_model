@@ -34,6 +34,7 @@ members = [
 ]
 
 [features]
+stop_time = []
 xmllint = ["proj"]
 
 [dependencies]

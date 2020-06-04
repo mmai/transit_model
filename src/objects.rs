@@ -809,9 +809,11 @@ impl std::fmt::Display for Time {
 // `Option<Box<CommentLinksT>>` instead of a `CommentLinksT`
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct StopTime {
+    #[cfg(feature = "stop_time")]
     pub id: Option<Box<String>>,
     pub stop_point_idx: Idx<StopPoint>,
     pub sequence: u32,
+    #[cfg(feature = "stop_time")]
     pub headsign: Option<Box<String>>,
     pub arrival_time: Time,
     pub departure_time: Time,
@@ -822,6 +824,7 @@ pub struct StopTime {
     pub datetime_estimated: bool,
     pub local_zone_id: Option<u16>,
     pub precision: Option<StopTimePrecision>,
+    #[cfg(feature = "stop_time")]
     pub comment_links: Option<Box<CommentLinksT>>,
 }
 

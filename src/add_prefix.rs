@@ -117,12 +117,15 @@ impl AddPrefix for Collections {
         self.grid_exception_dates.add_prefix(&prefix);
         self.grid_periods.add_prefix(&prefix);
         self.grid_rel_calendar_line.add_prefix(&prefix);
-        self.stop_time_headsigns =
-            add_prefix_on_vehicle_journey_ids(&self.stop_time_headsigns, &prefix);
-        self.stop_time_ids =
-            add_prefix_on_vehicle_journey_ids_and_values(&self.stop_time_ids, &prefix);
-        self.stop_time_comments =
-            add_prefix_on_vehicle_journey_ids_and_values(&self.stop_time_comments, &prefix);
+        #[cfg(not(feature = "stop_time"))]
+        {
+            self.stop_time_headsigns =
+                add_prefix_on_vehicle_journey_ids(&self.stop_time_headsigns, &prefix);
+            self.stop_time_ids =
+                add_prefix_on_vehicle_journey_ids_and_values(&self.stop_time_ids, &prefix);
+            self.stop_time_comments =
+                add_prefix_on_vehicle_journey_ids_and_values(&self.stop_time_comments, &prefix);
+        }
     }
 }
 

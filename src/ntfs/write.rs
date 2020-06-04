@@ -13,7 +13,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>
 
 use super::{Code, CommentLink, ObjectProperty, Result, Stop, StopLocationType, StopTime};
-use crate::model::Collections;
+use crate::model::{Collections, Model};
 use crate::ntfs::{has_fares_v1, has_fares_v2};
 use crate::objects::*;
 use crate::NTFS_VERSION;
@@ -22,7 +22,7 @@ use csv::Writer;
 use failure::{bail, format_err, ResultExt};
 use log::{info, warn};
 use rust_decimal::{prelude::ToPrimitive, Decimal};
-use std::collections::{BTreeSet, HashMap};
+use std::collections::BTreeSet;
 use std::fs::File;
 use std::path;
 use typed_index_collection::{Collection, CollectionWithId, Id};
@@ -71,13 +71,7 @@ pub fn write_feed_infos(
     Ok(())
 }
 
-pub fn write_vehicle_journeys_and_stop_times(
-    path: &path::Path,
-    vehicle_journeys: &CollectionWithId<VehicleJourney>,
-    stop_points: &CollectionWithId<StopPoint>,
-    stop_time_headsigns: &HashMap<(String, u32), String>,
-    stop_time_ids: &HashMap<(String, u32), String>,
-) -> Result<()> {
+pub fn write_vehicle_journeys_and_stop_times(path: &path::Path, model: &Model) -> Result<()> {
     info!("Writing trips.txt and stop_times.txt");
     let trip_path = path.join("trips.txt");
     let stop_times_path = path.join("stop_times.txt");
@@ -85,7 +79,7 @@ pub fn write_vehicle_journeys_and_stop_times(
         .with_context(|_| format!("Error reading {:?}", trip_path))?;
     let mut st_wtr = csv::Writer::from_path(&stop_times_path)
         .with_context(|_| format!("Error reading {:?}", stop_times_path))?;
-    for (vj_idx, vj) in vehicle_journeys.iter() {
+    for (vj_idx, vj) in &model.vehicle_journeys {
         vj_wtr
             .serialize(vj)
             .with_context(|_| format!("Error reading {:?}", trip_path))?;
@@ -100,7 +94,7 @@ pub fn write_vehicle_journeys_and_stop_times(
             });
             st_wtr
                 .serialize(StopTime {
-                    stop_id: stop_points[st.stop_point_idx].id.clone(),
+                    stop_id: model.stop_points[st.stop_point_idx].id.clone(),
                     trip_id: vj.id.clone(),
                     stop_sequence: st.sequence,
                     arrival_time: st.arrival_time,
@@ -111,12 +105,20 @@ pub fn write_vehicle_journeys_and_stop_times(
                     drop_off_type: st.drop_off_type,
                     datetime_estimated: Some(st.datetime_estimated as u8),
                     local_zone_id: st.local_zone_id,
-                    stop_headsign: stop_time_headsigns
-                        .get(&(vehicle_journeys[vj_idx].id.clone(), st.sequence))
+                    #[cfg(not(feature = "stop_time"))]
+                    stop_headsign: model
+                        .stop_time_headsigns
+                        .get(&(model.vehicle_journeys[vj_idx].id.clone(), st.sequence))
                         .cloned(),
-                    stop_time_id: stop_time_ids
-                        .get(&(vehicle_journeys[vj_idx].id.clone(), st.sequence))
+                    #[cfg(feature = "stop_time")]
+                    stop_headsign: None,
+                    #[cfg(not(feature = "stop_time"))]
+                    stop_time_id: model
+                        .stop_time_ids
+                        .get(&(model.vehicle_journeys[vj_idx].id.clone(), st.sequence))
                         .cloned(),
+                    #[cfg(feature = "stop_time")]
+                    stop_time_id: None,
                     precision,
                 })
                 .with_context(|_| format!("Error reading {:?}", st_wtr))?;
@@ -633,17 +635,17 @@ where
     Ok(())
 }
 
+#[cfg(not(feature = "stop_time"))]
 fn write_stop_time_comment_links<W>(
     wtr: &mut csv::Writer<W>,
-    stop_time_ids: &HashMap<(String, u32), String>,
-    stop_time_comments: &HashMap<(String, u32), String>,
+    collections: &Collections,
     path: &path::Path,
 ) -> Result<()>
 where
     W: ::std::io::Write,
 {
-    for (idx_sequence, id_comment) in stop_time_comments {
-        let st_id = &stop_time_ids[idx_sequence];
+    for (idx_sequence, id_comment) in &collections.stop_time_comments {
+        let st_id = &collections.stop_time_ids[idx_sequence];
 
         wtr.serialize(CommentLink {
             object_id: st_id.to_string(),
@@ -706,12 +708,8 @@ pub fn write_comments(path: &path::Path, collections: &Collections) -> Result<()
         &comment_links_path,
     )?;
 
-    write_stop_time_comment_links(
-        &mut cl_wtr,
-        &collections.stop_time_ids,
-        &collections.stop_time_comments,
-        &comment_links_path,
-    )?;
+    #[cfg(not(feature = "stop_time"))]
+    write_stop_time_comment_links(&mut cl_wtr, &collections, &comment_links_path)?;
 
     // TODO: add line_groups
 

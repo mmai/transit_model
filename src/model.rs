@@ -121,12 +121,15 @@ pub struct Collections {
     pub trip_properties: CollectionWithId<TripProperty>,
     pub geometries: CollectionWithId<Geometry>,
     pub admin_stations: Collection<AdminStation>,
+    #[cfg(not(feature = "stop_time"))]
     #[serde(skip)]
     //HashMap<(vehicle_journey_id, stop_sequence), headsign>,
     pub stop_time_headsigns: HashMap<(String, u32), String>,
+    #[cfg(not(feature = "stop_time"))]
     #[serde(skip)]
     //HashMap<(vehicle_journey_id, stop_sequence), stop_time_id>,
     pub stop_time_ids: HashMap<(String, u32), String>,
+    #[cfg(not(feature = "stop_time"))]
     #[serde(skip)]
     //HashMap<(vehicle_journey_id, stop_sequence), comment_id>
     pub stop_time_comments: HashMap<(String, u32), String>,
@@ -428,15 +431,18 @@ impl Collections {
             })
             .collect::<Vec<_>>();
 
-        comments_used.extend(self.stop_time_comments.iter().filter_map(
-            |((vj_id, _), comment_id)| {
-                if vjs.contains_key(vj_id) {
-                    Some(comment_id.clone())
-                } else {
-                    None
-                }
-            },
-        ));
+        #[cfg(not(feature = "stop_time"))]
+        {
+            comments_used.extend(self.stop_time_comments.iter().filter_map(
+                |((vj_id, _), comment_id)| {
+                    if vjs.contains_key(vj_id) {
+                        Some(comment_id.clone())
+                    } else {
+                        None
+                    }
+                },
+            ));
+        }
 
         self.comments
             .retain(log_predicate("Comment", |comment: &Comment| {
@@ -472,13 +478,16 @@ impl Collections {
         let vehicle_journeys_used: HashSet<String> = vjs.iter().map(|vj| vj.id.clone()).collect();
         self.vehicle_journeys = CollectionWithId::new(vjs)?;
         self.stop_locations = CollectionWithId::new(stop_locations)?;
-        self.stop_time_comments.retain(|(vj_id, _), comment_id| {
-            vehicle_journeys_used.contains(vj_id) && comments_used.contains(comment_id)
-        });
-        self.stop_time_ids
-            .retain(|(vj_id, _), _| vehicle_journeys_used.contains(vj_id));
-        self.stop_time_headsigns
-            .retain(|(vj_id, _), _| vehicle_journeys_used.contains(vj_id));
+        #[cfg(not(feature = "stop_time"))]
+        {
+            self.stop_time_comments.retain(|(vj_id, _), comment_id| {
+                vehicle_journeys_used.contains(vj_id) && comments_used.contains(comment_id)
+            });
+            self.stop_time_ids
+                .retain(|(vj_id, _), _| vehicle_journeys_used.contains(vj_id));
+            self.stop_time_headsigns
+                .retain(|(vj_id, _), _| vehicle_journeys_used.contains(vj_id));
+        }
         self.grid_rel_calendar_line
             .retain(|grid_rel_calendar_line| {
                 line_ids_used.contains(&grid_rel_calendar_line.line_id)
@@ -1331,9 +1340,11 @@ mod tests {
                 })
                 .unwrap();
             let stop_time = StopTime {
+                #[cfg(feature = "stop_time")]
                 id: None,
                 stop_point_idx: collections.stop_points.get_idx("stop_point_id").unwrap(),
                 sequence: 0,
+                #[cfg(feature = "stop_time")]
                 headsign: None,
                 arrival_time: Time::new(0, 0, 0),
                 departure_time: Time::new(0, 0, 0),
@@ -1344,6 +1355,7 @@ mod tests {
                 datetime_estimated: false,
                 local_zone_id: Some(0),
                 precision: None,
+                #[cfg(feature = "stop_time")]
                 comment_links: None,
             };
             collections
@@ -1501,9 +1513,11 @@ mod tests {
             collections: &Collections,
         ) -> VehicleJourney {
             let stop_time_at = |stop_point_id: &str| StopTime {
+                #[cfg(feature = "stop_time")]
                 id: None,
                 stop_point_idx: collections.stop_points.get_idx(stop_point_id).unwrap(),
                 sequence: 0,
+                #[cfg(feature = "stop_time")]
                 headsign: None,
                 arrival_time: Time::new(0, 0, 0),
                 departure_time: Time::new(0, 0, 0),
@@ -1514,6 +1528,7 @@ mod tests {
                 datetime_estimated: false,
                 local_zone_id: None,
                 precision: None,
+                #[cfg(feature = "stop_time")]
                 comment_links: None,
             };
             let stop_times: Vec<_> = stop_point_ids.into_iter().map(stop_time_at).collect();

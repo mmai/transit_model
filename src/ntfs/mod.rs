@@ -272,13 +272,7 @@ pub fn write<P: AsRef<path::Path>>(
         "grid_rel_calendar_line.txt",
         &model.grid_rel_calendar_line,
     )?;
-    write::write_vehicle_journeys_and_stop_times(
-        path,
-        &model.vehicle_journeys,
-        &model.stop_points,
-        &model.stop_time_headsigns,
-        &model.stop_time_ids,
-    )?;
+    write::write_vehicle_journeys_and_stop_times(path, &model)?;
     write_collection(path, "frequencies.txt", &model.frequencies)?;
     write_calendar_dates(path, &model.calendars)?;
     write::write_stops(
@@ -624,9 +618,11 @@ mod tests {
                 geometry_id: Some("Geometry:Line:Relation:6883353".to_string()),
                 stop_times: vec![
                     StopTime {
+                        #[cfg(feature = "stop_time")]
                         id: None,
                         stop_point_idx: stop_points.get_idx("OIF:SP:36:2085").unwrap(),
                         sequence: 0,
+                        #[cfg(feature = "stop_time")]
                         headsign: None,
                         arrival_time: Time::new(14, 40, 0),
                         departure_time: Time::new(14, 40, 0),
@@ -637,12 +633,15 @@ mod tests {
                         datetime_estimated: false,
                         local_zone_id: None,
                         precision: Some(StopTimePrecision::Exact),
+                        #[cfg(feature = "stop_time")]
                         comment_links: None,
                     },
                     StopTime {
+                        #[cfg(feature = "stop_time")]
                         id: None,
                         stop_point_idx: stop_points.get_idx("OIF:SP:36:2127").unwrap(),
                         sequence: 1,
+                        #[cfg(feature = "stop_time")]
                         headsign: None,
                         arrival_time: Time::new(14, 42, 0),
                         departure_time: Time::new(14, 42, 0),
@@ -653,6 +652,7 @@ mod tests {
                         datetime_estimated: false,
                         local_zone_id: None,
                         precision: Some(StopTimePrecision::Exact),
+                        #[cfg(feature = "stop_time")]
                         comment_links: None,
                     },
                 ],
@@ -1054,9 +1054,11 @@ mod tests {
             trip_property_id: None,
             geometry_id: None,
             stop_times: vec![StopTime {
+                #[cfg(feature = "stop_time")]
                 id: None,
                 stop_point_idx: stop_points.get_idx("sp_1").unwrap(),
                 sequence: 0,
+                #[cfg(feature = "stop_time")]
                 headsign: None,
                 arrival_time: Time::new(9, 0, 0),
                 departure_time: Time::new(9, 2, 0),
@@ -1067,6 +1069,7 @@ mod tests {
                 datetime_estimated: false,
                 local_zone_id: None,
                 precision: None,
+                #[cfg(feature = "stop_time")]
                 comment_links: None,
             }],
             journey_pattern_id: None,

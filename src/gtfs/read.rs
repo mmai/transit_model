@@ -391,6 +391,7 @@ where
     let mut rdr = csv::ReaderBuilder::new()
         .trim(csv::Trim::All)
         .from_reader(reader);
+    #[cfg(not(feature = "stop_time"))]
     let mut headsigns = HashMap::new();
     let mut tmp_vjs = HashMap::new();
     for stop_time in rdr.deserialize() {
@@ -408,12 +409,15 @@ where
             })?;
 
         // consume the stop headsign
-        let headsign = std::mem::replace(&mut stop_time.stop_headsign, None);
-        if let Some(headsign) = headsign {
-            headsigns.insert(
-                (stop_time.trip_id.clone(), stop_time.stop_sequence),
-                headsign,
-            );
+        #[cfg(not(feature = "stop_time"))]
+        {
+            let headsign = std::mem::replace(&mut stop_time.stop_headsign, None);
+            if let Some(headsign) = headsign {
+                headsigns.insert(
+                    (stop_time.trip_id.clone(), stop_time.stop_sequence),
+                    headsign,
+                );
+            }
         }
 
         tmp_vjs
@@ -421,7 +425,10 @@ where
             .or_insert_with(|| vec![])
             .push(stop_time);
     }
-    collections.stop_time_headsigns = headsigns;
+    #[cfg(not(feature = "stop_time"))]
+    {
+        collections.stop_time_headsigns = headsigns;
+    }
 
     for (vj_idx, mut stop_times) in tmp_vjs {
         stop_times.sort_unstable_by_key(|st| st.stop_sequence);
@@ -470,9 +477,11 @@ where
                 .index_mut(vj_idx)
                 .stop_times
                 .push(objects::StopTime {
+                    #[cfg(feature = "stop_time")]
                     id: None,
                     stop_point_idx,
                     sequence: stop_time.stop_sequence,
+                    #[cfg(feature = "stop_time")]
                     headsign: None,
                     arrival_time: st_values.arrival_time,
                     departure_time: st_values.departure_time,
@@ -483,6 +492,7 @@ where
                     datetime_estimated: st_values.datetime_estimated,
                     local_zone_id: stop_time.local_zone_id,
                     precision,
+                    #[cfg(feature = "stop_time")]
                     comment_links: None,
                 });
         }
@@ -643,21 +653,24 @@ fn manage_odt_comment_from_stop_time(
             };
             collections.comments.push(comment).unwrap()
         });
-    collections.stop_time_comments.insert(
-        (
-            collections.vehicle_journeys[vj_idx].id.to_string(),
-            stop_time.stop_sequence,
-        ),
-        comment_id,
-    );
-    let stop_time_id = format!("{}-{}", stop_time.trip_id, stop_time.stop_sequence);
-    collections.stop_time_ids.insert(
-        (
-            collections.vehicle_journeys[vj_idx].id.to_string(),
-            stop_time.stop_sequence,
-        ),
-        stop_time_id,
-    );
+    #[cfg(not(feature = "stop_time"))]
+    {
+        collections.stop_time_comments.insert(
+            (
+                collections.vehicle_journeys[vj_idx].id.to_string(),
+                stop_time.stop_sequence,
+            ),
+            comment_id,
+        );
+        let stop_time_id = format!("{}-{}", stop_time.trip_id, stop_time.stop_sequence);
+        collections.stop_time_ids.insert(
+            (
+                collections.vehicle_journeys[vj_idx].id.to_string(),
+                stop_time.stop_sequence,
+            ),
+            stop_time_id,
+        );
+    }
 }
 
 #[derive(Default)]
@@ -1272,9 +1285,11 @@ where
                         .stop_times
                         .iter()
                         .map(|stop_time| NtfsStopTime {
+                            #[cfg(feature = "stop_time")]
                             id: None,
                             stop_point_idx: stop_time.stop_point_idx,
                             sequence: stop_time.sequence,
+                            #[cfg(feature = "stop_time")]
                             headsign: None,
                             arrival_time: stop_time.arrival_time + start_time - arrival_time_delta,
                             departure_time: stop_time.departure_time + start_time
@@ -1286,6 +1301,7 @@ where
                             datetime_estimated,
                             local_zone_id: stop_time.local_zone_id,
                             precision: stop_time.precision.clone(),
+                            #[cfg(feature = "stop_time")]
                             comment_links: None,
                         })
                         .collect();
@@ -1297,46 +1313,52 @@ where
                         ..corresponding_vj.clone()
                     };
                     new_vehicle_journeys.push(generated_vj);
-                    let stop_time_comments: HashMap<(String, u32), String> = corresponding_vj
-                        .stop_times
-                        .iter()
-                        .filter(|stop_time| {
-                            stop_time.pickup_type == 2 || stop_time.drop_off_type == 2
-                        })
-                        .filter_map(|stop_time| {
-                            collections
-                                .stop_time_comments
-                                .get(&(frequency.trip_id.clone(), stop_time.sequence))
-                                .map(|comment_id| {
-                                    (
-                                        (generated_trip_id.clone(), stop_time.sequence),
-                                        comment_id.to_string(),
-                                    )
-                                })
-                        })
-                        .collect();
-                    let stop_time_ids: HashMap<(String, u32), String> = stop_time_comments
-                        .keys()
-                        .map(|(trip_id, sequence)| {
-                            (
-                                (trip_id.to_string(), *sequence),
-                                format!("{}-{}", trip_id, sequence),
-                            )
-                        })
-                        .collect();
-                    collections.stop_time_comments.extend(stop_time_comments);
-                    collections.stop_time_ids.extend(stop_time_ids);
+                    #[cfg(not(feature = "stop_time"))]
+                    {
+                        let stop_time_comments: HashMap<(String, u32), String> = corresponding_vj
+                            .stop_times
+                            .iter()
+                            .filter(|stop_time| {
+                                stop_time.pickup_type == 2 || stop_time.drop_off_type == 2
+                            })
+                            .filter_map(|stop_time| {
+                                collections
+                                    .stop_time_comments
+                                    .get(&(frequency.trip_id.clone(), stop_time.sequence))
+                                    .map(|comment_id| {
+                                        (
+                                            (generated_trip_id.clone(), stop_time.sequence),
+                                            comment_id.to_string(),
+                                        )
+                                    })
+                            })
+                            .collect();
+                        let stop_time_ids: HashMap<(String, u32), String> = stop_time_comments
+                            .keys()
+                            .map(|(trip_id, sequence)| {
+                                (
+                                    (trip_id.to_string(), *sequence),
+                                    format!("{}-{}", trip_id, sequence),
+                                )
+                            })
+                            .collect();
+                        collections.stop_time_comments.extend(stop_time_comments);
+                        collections.stop_time_ids.extend(stop_time_ids);
+                    }
                 }
             }
             let mut vehicle_journeys = collections.vehicle_journeys.take();
             let trip_ids_to_remove: Vec<_> = gtfs_frequencies.iter().map(|f| &f.trip_id).collect();
             vehicle_journeys.retain(|vj| !trip_ids_to_remove.contains(&&vj.id));
-            collections
-                .stop_time_ids
-                .retain(|(vj_id, _), _| !trip_ids_to_remove.contains(&&vj_id));
-            collections
-                .stop_time_comments
-                .retain(|(vj_id, _), _| !trip_ids_to_remove.contains(&&vj_id));
+            #[cfg(not(feature = "stop_time"))]
+            {
+                collections
+                    .stop_time_ids
+                    .retain(|(vj_id, _), _| !trip_ids_to_remove.contains(&&vj_id));
+                collections
+                    .stop_time_comments
+                    .retain(|(vj_id, _), _| !trip_ids_to_remove.contains(&&vj_id));
+            }
 
             vehicle_journeys.append(&mut new_vehicle_journeys);
             collections.vehicle_journeys = CollectionWithId::new(vehicle_journeys)?;
@@ -2488,9 +2510,11 @@ mod tests {
             assert_eq!(
                 vec![
                     StopTime {
+                        #[cfg(feature = "stop_time")]
                         id: None,
                         stop_point_idx: collections.stop_points.get_idx("sp:01").unwrap(),
                         sequence: 1,
+                        #[cfg(feature = "stop_time")]
                         headsign: None,
                         arrival_time: Time::new(6, 0, 0),
                         departure_time: Time::new(6, 0, 0),
@@ -2501,12 +2525,15 @@ mod tests {
                         datetime_estimated: true,
                         local_zone_id: None,
                         precision: Some(StopTimePrecision::Approximate),
+                        #[cfg(feature = "stop_time")]
                         comment_links: None,
                     },
                     StopTime {
+                        #[cfg(feature = "stop_time")]
                         id: None,
                         stop_point_idx: collections.stop_points.get_idx("sp:02").unwrap(),
                         sequence: 2,
+                        #[cfg(feature = "stop_time")]
                         headsign: None,
                         arrival_time: Time::new(6, 6, 27),
                         departure_time: Time::new(6, 6, 27),
@@ -2517,12 +2544,15 @@ mod tests {
                         datetime_estimated: false,
                         local_zone_id: None,
                         precision: Some(StopTimePrecision::Exact),
+                        #[cfg(feature = "stop_time")]
                         comment_links: None,
                     },
                     StopTime {
+                        #[cfg(feature = "stop_time")]
                         id: None,
                         stop_point_idx: collections.stop_points.get_idx("sp:03").unwrap(),
                         sequence: 3,
+                        #[cfg(feature = "stop_time")]
                         headsign: None,
                         arrival_time: Time::new(6, 6, 27),
                         departure_time: Time::new(6, 6, 27),
@@ -2533,6 +2563,7 @@ mod tests {
                         datetime_estimated: false,
                         local_zone_id: None,
                         precision: Some(StopTimePrecision::Exact),
+                        #[cfg(feature = "stop_time")]
                         comment_links: None,
                     },
                 ],
@@ -2583,9 +2614,11 @@ mod tests {
             assert_eq!(
                 vec![
                     StopTime {
+                        #[cfg(feature = "stop_time")]
                         id: None,
                         stop_point_idx: collections.stop_points.get_idx("sp:01").unwrap(),
                         sequence: 1,
+                        #[cfg(feature = "stop_time")]
                         headsign: None,
                         arrival_time: Time::new(6, 0, 0),
                         departure_time: Time::new(6, 0, 0),
@@ -2596,12 +2629,15 @@ mod tests {
                         datetime_estimated: false,
                         local_zone_id: None,
                         precision: Some(StopTimePrecision::Exact),
+                        #[cfg(feature = "stop_time")]
                         comment_links: None,
                     },
                     StopTime {
+                        #[cfg(feature = "stop_time")]
                         id: None,
                         stop_point_idx: collections.stop_points.get_idx("sp:02").unwrap(),
                         sequence: 2,
+                        #[cfg(feature = "stop_time")]
                         headsign: None,
                         arrival_time: Time::new(6, 6, 27),
                         departure_time: Time::new(6, 6, 27),
@@ -2612,6 +2648,7 @@ mod tests {
                         datetime_estimated: false,
                         local_zone_id: None,
                         precision: Some(StopTimePrecision::Exact),
+                        #[cfg(feature = "stop_time")]
                         comment_links: None,
                     },
                 ],
@@ -3286,9 +3323,11 @@ mod tests {
             assert_eq!(
                 vec![
                     StopTime {
+                        #[cfg(feature = "stop_time")]
                         id: None,
                         stop_point_idx: collections.stop_points.get_idx("sp:01").unwrap(),
                         sequence: 1,
+                        #[cfg(feature = "stop_time")]
                         headsign: None,
                         arrival_time: Time::new(6, 0, 0),
                         departure_time: Time::new(6, 0, 0),
@@ -3299,12 +3338,15 @@ mod tests {
                         datetime_estimated: true,
                         local_zone_id: None,
                         precision: Some(StopTimePrecision::Estimated),
+                        #[cfg(feature = "stop_time")]
                         comment_links: None,
                     },
                     StopTime {
+                        #[cfg(feature = "stop_time")]
                         id: None,
                         stop_point_idx: collections.stop_points.get_idx("sp:02").unwrap(),
                         sequence: 2,
+                        #[cfg(feature = "stop_time")]
                         headsign: None,
                         arrival_time: Time::new(6, 6, 27),
                         departure_time: Time::new(6, 6, 27),
@@ -3315,12 +3357,15 @@ mod tests {
                         datetime_estimated: false,
                         local_zone_id: None,
                         precision: Some(StopTimePrecision::Exact),
+                        #[cfg(feature = "stop_time")]
                         comment_links: None,
                     },
                     StopTime {
+                        #[cfg(feature = "stop_time")]
                         id: None,
                         stop_point_idx: collections.stop_points.get_idx("sp:03").unwrap(),
                         sequence: 3,
+                        #[cfg(feature = "stop_time")]
                         headsign: None,
                         arrival_time: Time::new(6, 6, 27),
                         departure_time: Time::new(6, 6, 27),
@@ -3331,6 +3376,7 @@ mod tests {
                         datetime_estimated: false,
                         local_zone_id: None,
                         precision: Some(StopTimePrecision::Exact),
+                        #[cfg(feature = "stop_time")]
                         comment_links: None,
                     },
                 ],

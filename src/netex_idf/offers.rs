@@ -733,9 +733,11 @@ fn stop_times(
             };
             let times = arrival_departure_times(tpt)?;
             let stop_time = StopTime {
+                #[cfg(feature = "stop_time")]
                 id: None,
                 stop_point_idx,
                 sequence: sequence as u32,
+                #[cfg(feature = "stop_time")]
                 headsign: None,
                 arrival_time: times.0,
                 departure_time: times.1,
@@ -746,6 +748,7 @@ fn stop_times(
                 datetime_estimated: false,
                 local_zone_id,
                 precision: None,
+                #[cfg(feature = "stop_time")]
                 comment_links: None,
             };
 

@@ -108,9 +108,11 @@ mod tests {
             departure_time: Time,
         ) -> StopTime {
             StopTime {
+                #[cfg(feature = "stop_time")]
                 id: None,
                 stop_point_idx,
                 sequence,
+                #[cfg(feature = "stop_time")]
                 headsign: None,
                 arrival_time: Time::new(0, 0, 0),
                 departure_time,
@@ -121,6 +123,7 @@ mod tests {
                 datetime_estimated: false,
                 local_zone_id: None,
                 precision: None,
+                #[cfg(feature = "stop_time")]
                 comment_links: None,
             }
         }

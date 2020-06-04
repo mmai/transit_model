@@ -26,7 +26,6 @@ use geo_types::Geometry as GeoGeometry;
 use log::{info, warn};
 use relational_types::IdxSet;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::path;
 use typed_index_collection::{Collection, CollectionWithId, Id, Idx};
 
@@ -442,21 +441,16 @@ pub fn write_routes(path: &path::Path, model: &Model) -> Result<()> {
     Ok(())
 }
 
-pub fn write_stop_times(
-    path: &path::Path,
-    vehicle_journeys: &CollectionWithId<VehicleJourney>,
-    stop_points: &CollectionWithId<StopPoint>,
-    stop_times_headsigns: &HashMap<(String, u32), String>,
-) -> Result<()> {
+pub fn write_stop_times(path: &path::Path, model: &Model) -> Result<()> {
     info!("Writing stop_times.txt");
     let stop_times_path = path.join("stop_times.txt");
     let mut st_wtr = csv::Writer::from_path(&stop_times_path)
         .with_context(|_| format!("Error reading {:?}", stop_times_path))?;
-    for (vj_idx, vj) in vehicle_journeys {
+    for (vj_idx, vj) in &model.vehicle_journeys {
         for st in &vj.stop_times {
             st_wtr
                 .serialize(StopTime {
-                    stop_id: stop_points[st.stop_point_idx].id.clone(),
+                    stop_id: model.stop_points[st.stop_point_idx].id.clone(),
                     trip_id: vj.id.clone(),
                     stop_sequence: st.sequence,
                     arrival_time: Some(st.arrival_time),
@@ -464,9 +458,13 @@ pub fn write_stop_times(
                     pickup_type: st.pickup_type,
                     drop_off_type: st.drop_off_type,
                     local_zone_id: st.local_zone_id,
-                    stop_headsign: stop_times_headsigns
-                        .get(&(vehicle_journeys[vj_idx].id.clone(), st.sequence))
+                    #[cfg(not(feature = "stop_time"))]
+                    stop_headsign: model
+                        .stop_times_headsigns
+                        .get(&(model.vehicle_journeys[vj_idx].id.clone(), st.sequence))
                         .cloned(),
+                    #[cfg(feature = "stop_time")]
+                    stop_headsign: None,
                     timepoint: !st.datetime_estimated,
                 })
                 .with_context(|_| format!("Error reading {:?}", st_wtr))?;
@@ -875,9 +873,11 @@ mod tests {
             geometry_id: Some("Geometry:Line:Relation:6883353".to_string()),
             stop_times: vec![
                 objects::StopTime {
+                    #[cfg(feature = "stop_time")]
                     id: None,
                     stop_point_idx: sps.get_idx("OIF:SP:36:2085").unwrap(),
                     sequence: 0,
+                    #[cfg(feature = "stop_time")]
                     headsign: None,
                     arrival_time: objects::Time::new(14, 40, 0),
                     departure_time: objects::Time::new(14, 40, 0),
@@ -888,12 +888,15 @@ mod tests {
                     datetime_estimated: false,
                     local_zone_id: None,
                     precision: None,
+                    #[cfg(feature = "stop_time")]
                     comment_links: None,
                 },
                 objects::StopTime {
+                    #[cfg(feature = "stop_time")]
                     id: None,
                     stop_point_idx: sps.get_idx("OIF:SP:36:2127").unwrap(),
                     sequence: 1,
+                    #[cfg(feature = "stop_time")]
                     headsign: None,
                     arrival_time: objects::Time::new(14, 42, 0),
                     departure_time: objects::Time::new(14, 42, 0),
@@ -904,6 +907,7 @@ mod tests {
                     datetime_estimated: false,
                     local_zone_id: None,
                     precision: None,
+                    #[cfg(feature = "stop_time")]
                     comment_links: None,
                 },
             ],
@@ -1109,9 +1113,11 @@ mod tests {
         });
         let stop_times_vec = vec![
             StopTime {
+                #[cfg(feature = "stop_time")]
                 id: None,
                 stop_point_idx: stop_points.get_idx("sp:01").unwrap(),
                 sequence: 1,
+                #[cfg(feature = "stop_time")]
                 headsign: None,
                 arrival_time: Time::new(6, 0, 0),
                 departure_time: Time::new(6, 0, 0),
@@ -1122,12 +1128,15 @@ mod tests {
                 datetime_estimated: false,
                 local_zone_id: None,
                 precision: None,
+                #[cfg(feature = "stop_time")]
                 comment_links: None,
             },
             StopTime {
+                #[cfg(feature = "stop_time")]
                 id: None,
                 stop_point_idx: stop_points.get_idx("sp:01").unwrap(),
                 sequence: 2,
+                #[cfg(feature = "stop_time")]
                 headsign: None,
                 arrival_time: Time::new(6, 6, 27),
                 departure_time: Time::new(6, 6, 27),
@@ -1138,6 +1147,7 @@ mod tests {
                 datetime_estimated: true,
                 local_zone_id: Some(3),
                 precision: None,
+                #[cfg(feature = "stop_time")]
                 comment_links: None,
             },
         ];
