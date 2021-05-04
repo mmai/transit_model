@@ -4,6 +4,7 @@ on:
     push:
         branches:  # Build 'master' branch
             - 'master'
+            - 'test_job_url'
     pull_request:  # Build any PR
 
 jobs:
@@ -14,7 +15,7 @@ jobs:
     steps:
     - uses: actions/checkout@master
     - name: Check formatting
-      run: make format
+      run: echo "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
 
   clippy:
     name: Analyzing code with Clippy
