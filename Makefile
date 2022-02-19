@@ -42,3 +42,6 @@ help: ## Print this help message
 
 .PHONY: install_proj_deps install_proj fmt format clippy lint test help
 .DEFAULT_GOAL := help
+
+dev:
+	bash ./checknix.sh && nix develop
