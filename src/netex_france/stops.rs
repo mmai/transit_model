@@ -341,7 +341,17 @@ impl<'a> StopExporter<'a> {
                     .attr("srsName", "EPSG:2154")
                     .append(coord_text)
                     .build();
-                let location = Element::builder("Location").append(pos).build();
+                let latitude = Element::builder("Latitude")
+                    .append(Node::Text(format!("{}", coord.lat)))
+                    .build();
+                let longitude = Element::builder("Longitude")
+                    .append(Node::Text(format!("{}", coord.lon)))
+                    .build();
+                let location = Element::builder("Location")
+                    .append(pos)
+                    .append(latitude)
+                    .append(longitude)
+                    .build();
                 let centroid = Element::builder("Centroid").append(location).build();
                 return Some(centroid);
             }
